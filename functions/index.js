@@ -33,14 +33,27 @@ app.get("/v1/", (req, res) => {
     const main = async ()=>{
         try {
             //level one  -- Get followers of user
-            const response = await axios({
-                method: 'Get',
-                url:`https://api.github.com/users/${username}/followers`,
-                auth: {
-                    username: self.toString(),
-                    password: password.toString()
-                }
-            });
+            let response = "";
+            if (self){
+                response = await axios({
+                    method: 'Get',
+                    url:`https://api.github.com/users/${username}/followers`,
+                    auth: {
+                        username: self.toString(),
+                        password: password.toString()
+                    }
+                });
+            }else {
+                response = await axios({
+                    method: 'Get',
+                    url:`https://api.github.com/users/${username}/followers`
+                });
+            }
+            if(response.status !== 200){
+                res.status(400).json({
+                    messsage: 'User not found, please double check username'
+                })
+            }
             const followers = response.data;
             const levelOneIdsList = bringLimitBack(followers.map(follower => follower.id), limit);
             const followerUrlsList = bringLimitBack(followers.map(follwer => follwer.followers_url), limit);
@@ -49,14 +62,23 @@ app.get("/v1/", (req, res) => {
             const levelTwoIdsList = [];
             const levelTwoUrlsList = [];
             for(const url of followerUrlsList) {
-                const response = await axios({
-                    method: 'Get',
-                    url: url.toString(),
-                    auth: {
-                        username: self.toString(),
-                        password: password.toString()
-                    }
-                });
+                let response ="";
+                if (self){
+                    response = await axios({
+                        method: 'Get',
+                        url: url.toString(),
+                        auth: {
+                            username: self.toString(),
+                            password: password.toString()
+                        }
+                    });
+                }else {
+                    response = await axios({
+                        method: 'Get',
+                        url: url.toString(),
+                    });
+                }
+              
                 const levelTwoFollower = response.data;
                 const levelTwoIds = bringLimitBack(levelTwoFollower.map(follower => follower.id), limit);
                 const LevelTwoFollowerUrls = bringLimitBack(levelTwoFollower.map(follwer => follwer.followers_url), limit);
@@ -71,14 +93,22 @@ app.get("/v1/", (req, res) => {
             for(const urlgroup of levelTwoUrlsList){
                 for(url of urlgroup){
                     if(url !== []){
-                        const response = await axios({
-                            method: 'Get',
-                            url: url.toString(),
-                            auth: {
-                                username: self.toString(),
-                                password: password.toString()
-                            }
-                        });
+                        let response ="";
+                        if (self){
+                            response = await axios({
+                                method: 'Get',
+                                url: url.toString(),
+                                auth: {
+                                    username: self.toString(),
+                                    password: password.toString()
+                                }
+                            });
+                        }else {
+                            response = await axios({
+                                method: 'Get',
+                                url: url.toString(),
+                            });
+                        }
                         const levelThreeFollower = response.data;
                         const levelThreeIds = bringLimitBack(levelThreeFollower.map(follower => follower.id), limit);
                         const LevelThreeFollowerUrls = bringLimitBack(levelThreeFollower.map(follwer => follwer.followers_url), limit);
@@ -90,7 +120,11 @@ app.get("/v1/", (req, res) => {
             }
             return [levelOneIdsList, levelTwoIdsList, levelThreeIdsList];
         } catch (error) {
-            console.error(error);
+            console.error("error message",error);
+            res.status(500).json({
+                error,
+                message: "probably a rate limit issue with Github API, pass a self and password "
+            })
         }
         return [levelOneIdsList, levelTwoIdsList, levelThreeIdsList];
     };
